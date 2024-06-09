@@ -1,29 +1,30 @@
-Шаг 1 Установка kubectl и minikube и запуск
-
-![minikube_status.pn g](screenshots%2Fminikube_status.png)
-![kubeconfig.png](screenshots%2Fkubeconfig.png)
-
-Шаг 2 Запуск nextcloud с дефолтными параметрами
-![create_default.png](screenshots%2Fcreate_default.png)  
-![pods.png](screenshots%2Fpods.png)
-
-Логи nextcloud 
-![img.png](screenshots/nextcloud_default_logs.png)
-
-Шаг 3 добавление проб в nextcloud и перенос секретов
-
-Описание поды nextcloud 
-![describe_nextcloud1.png](screenshots%2Fdescribe_nextcloud1.png)
-
-![describe_nextcloud2.png](screenshots%2Fdescribe_nextcloud2.png)
-
-Ответы на вопросы:  
-**Важен ли порядок выполнения этих манифестов? Почему?**
-Важен, если один манифест зависит от старта другого (аналог depends on из docker-compose). Если не запустить изначально pg_secret, то деплоймент упадет с ошибкой, так как ссылается на данный манифест в своих переменных  
+# itmo_containers
 
 
-**Что произойдет, если масштабировать реплики postgres-deployment до 0, а затем обратно до 1?**  
-Маштабирование реплик до 0 фактически равно удалению бд postgres, из-за чего nexcloud будет выдавать ошибку (если нет реплик, то и подключаться не к чему).  
-При обратном маштабировании на 1, postgres опять развернется с нуля, так как в данном случае у нас не подключены volume, то никаких данных в бд не будет и nextcloud все равно будет выдавать ошибку
+В docker-compose описаны 3 сервиса 
+1) Postgres образ базы данных Postgres с хранением данных в папке ./data/db 
+2) init-db инит сервис, запускающий файл initproject.sh, который в свою очередь пытается создать схему в бд, после старты и перехода контейнера postgres в статус healthy
+3) card-service, билдищий Dockerfile и присваивающий этому образу имя card-service-container, стартует после успешного старта postgres
 
+Переменные для БД хранятся в файле .env  
+Общая netwrok -- product_cars_service_net
 
+# Ответы на вопросы
+
+1) Можно ли ограничивать ресурсы (например, память или CPU) для сервисов в docker-compose.yml? Если нет, то почему, если да, то как?  
+    Можно, к описанию сервисов сегментов
+```yaml
+services:  
+    card-service:  
+        deploy:  
+            resources:  
+                limits:  
+                    cpus: 0.50  
+                    memory: 512M  
+            reservations:  
+                    cpus: 0.25  
+                    memory: 128M  
+```
+
+2) Как можно запустить только определенный сервис из docker-compose.yml, не запуская остальные?  
+Прописать имя сервиса docker-compose up -d [SERVICE]. В моем примере docker-compose up -d postgres запусит только образ базы данных

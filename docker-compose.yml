@@ -1,0 +1,42 @@
+version: '3.7'
+
+services:
+  postgres:
+    image: postgres:13.3
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+    env_file:
+      .env
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    networks:
+      - product_cars_service_net
+  init-db:
+    image: postgres:13.3
+    command: "sh /initproject.sh"
+    env_file:
+      .env
+    volumes:
+      - ./initproject.sh:/initproject.sh
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - product_cars_service_net
+  card-service:
+    build: .
+    depends_on:
+      - init-db
+    ports:
+      - "8080:8080"
+    entrypoint: "java -jar /card-service.jar"
+    container_name: card-service-container
+    networks:
+      - product_cars_service_net
+networks:
+  product_cars_service_net:
