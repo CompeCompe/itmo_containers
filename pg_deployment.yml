@@ -12,6 +12,9 @@ spec:
       labels:
         app: postgres
     spec:
+      volumes:
+        - name: postgres-data
+          emptyDir: { }
       containers:
         - name: postgres-container
           image: postgres:14
@@ -28,3 +31,6 @@ spec:
           envFrom:
             - secretRef:
                 name: postgres-secret
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /data

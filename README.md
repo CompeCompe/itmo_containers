@@ -1,30 +1,35 @@
-# itmo_containers
 
+# Шаг 1 запускаем миникуб
+minikube start --force
 
-В docker-compose описаны 3 сервиса 
-1) Postgres образ базы данных Postgres с хранением данных в папке ./data/db 
-2) init-db инит сервис, запускающий файл initproject.sh, который в свою очередь пытается создать схему в бд, после старты и перехода контейнера postgres в статус healthy
-3) card-service, билдищий Dockerfile и присваивающий этому образу имя card-service-container, стартует после успешного старта postgres
+![start_minikube.png](screenshots%2Fstart_minikube.png)
 
-Переменные для БД хранятся в файле .env  
-Общая netwrok -- product_cars_service_net
+# Шаг 2 Собираем кастомный образ card-service из ЛР2
+eval $(minikube docker-env)
+docker build -t card-service:latest .
 
-# Ответы на вопросы
+# Шаг 3 Добавляем манифесты
 
-1) Можно ли ограничивать ресурсы (например, память или CPU) для сервисов в docker-compose.yml? Если нет, то почему, если да, то как?  
-    Можно, к описанию сервисов сегментов
-```yaml
-services:  
-    card-service:  
-        deploy:  
-            resources:  
-                limits:  
-                    cpus: 0.50  
-                    memory: 512M  
-            reservations:  
-                    cpus: 0.25  
-                    memory: 128M  
-```
+kubectl create -f pg_configmap.yml
+kubectl create -f pg_secret.yml
+kubectl create -f pg_deployment.yml
+kubectl create -f pg_service.yml
+kubectl create -f card-service.yml
 
-2) Как можно запустить только определенный сервис из docker-compose.yml, не запуская остальные?  
-Прописать имя сервиса docker-compose up -d [SERVICE]. В моем примере docker-compose up -d postgres запусит только образ базы данных
+Деплоймент образа postgres и образа card-service с init-контейнеров из ЛР2
+
+![add_manifests.png](screenshots%2Fadd_manifests.png)
+
+# Шаг 4 проверяем логи card-service 
+![card-service_logs.png](screenshots%2Fcard-service_logs.png)
+Убеждаемся, что приложение на spring стартовало успешно
+# Шаг 5 прокидываем порт, для проверки ручек сервиса
+kubectl port-forward --address localhost deployment/card-service 8083:8080
+
+![ports.png](screenshots%2Fports.png)
+
+# Шаг 6 дергаем ручку через постман, для проверки сервиса
+
+![postman.png](screenshots%2Fpostman.png)
+
+Создание карточек происходит успешно на порту 8083
